@@ -427,8 +427,3 @@ if __name__ == "__main__":
     print("Temp DIR: ", args.temp_dir)
     auto_garbage_collect()
     run(args)
-
-#command to run FedAvg with 2 clients, 2 rounds 1 epoch, 16 batchsize, MobileNet, no augmentation
-# python main.py -s FedDistill -m MobileNet -n 2 -e 5 -x 16 -c 2 -f 2 -p "/run/media/sakshamchecker/New Volume/Practice/FCL/FCLSocRob_Internship/src/SADRA-Dataset" -o output -a False -b FedAvg -t cpu
-    
-# python main.py -s FedDistill -m MobileNet -n 2 -e 5 -x 16 -c 2 -f 2 -p SADRA-Dataset -o output -a False -b FedAvg -t cpu
