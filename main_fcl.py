@@ -148,22 +148,12 @@ def run(args):
     num_CPUs = 4
     if args.processor_type == 'gpu':
         num_GPUs = 1
-        if args.temp_dir == '':
-            ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}
-        else:
-            if not os.path.exists(args.temp_dir):
-                os.makedirs(args.temp_dir)
-            ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs, "_temp_dir": args.temp_dir}
+        ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}
         DEVICE = torch.device("cuda")
         gpu_flag = 1
     else:
         num_GPUs = 0
-        if args.temp_dir == '':
-            ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}
-        else:
-            if not os.path.exists(args.temp_dir):
-                os.makedirs(args.temp_dir)
-            ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs, "_temp_dir": args.temp_dir}
+        ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}
         DEVICE = torch.device("cpu")
         gpu_flag = 0
 
@@ -498,7 +488,6 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--aug", type=eval, choices=[True, False], default='False', help="Use Augmentation?")
     parser.add_argument("-b", "--base", type=str, default="FedAvg", help="Default base for FedRoot Only")
     parser.add_argument("-t", "--processor_type", type=str, default="cpu", help="Processor Type")
-    parser.add_argument("-d", "--temp_dir", type=str, default="", help="Temp DIR?")
     args = parser.parse_args()
 
     print("Running with the following arguments:")
@@ -514,7 +503,6 @@ if __name__ == "__main__":
     print("Output: ", args.output)
     print("Augmentation: ", args.aug)
     print("Processor Type: ", args.processor_type)
-    print("Temp DIR: ", args.temp_dir)
 
     run(args)
 

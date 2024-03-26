@@ -42,7 +42,7 @@ def load_images(path):
 	
 	
 	df = load_universal(path)
-	path = path + "/screenshots"
+	path = path + "/images"
 	li = sort_nicely(os.listdir(path))
 	data_images = pd.DataFrame(columns=['Stamp', 'path'] + list(df.columns[1:3]) + list(df.columns[-8:]))
 
