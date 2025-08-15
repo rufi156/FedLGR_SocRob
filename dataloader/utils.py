@@ -46,11 +46,11 @@ def load_images(path):
 	li = sort_nicely(os.listdir(path))
 	data_images = pd.DataFrame(columns=['Stamp', 'path'] + list(df.columns[1:3]) + list(df.columns[-8:]))
 
-	for i in range(len(li)):
+	for i in range(len(df)):
 		try:
 			entry = [float(li[i][:3]),
 					 f'{path}/' + li[i],
-					 int(df[df['Stamp'] == float(li[i][:3])]['Using circle']),
+					 int(df[df['Stamp'] == float(li[i].split('_')[0])]['Using circle']),
 					 int(df[df['Stamp'] == float(li[i][:3])]['Using arrow']),
 					 float(df[df['Stamp'] == float(li[i][:3])]['Vacuum cleaning']),
 					 float(df[df['Stamp'] == float(li[i][:3])]['Mopping the floor']),
@@ -63,8 +63,8 @@ def load_images(path):
 					 ]
 			new_df = pd.DataFrame([entry], columns=data_images.columns)
 			data_images = pd.concat([data_images, new_df], ignore_index=True)
-		except:
-			print('Error Loading FileName; Continuing to next.')
+		except Exception as e:
+			print(f"Error Loading FileName {li[i].split('_')[0]}: {e}; Continuing to next.")
 
 	return data_images
 
