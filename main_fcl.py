@@ -508,3 +508,7 @@ if __name__ == "__main__":
 
 # Run FedAvg EWC with 2 clients 2 rounds 1 epoch
 # python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -r 1000 -n 2 -e 1 -c 2 -f 2 -p SADRA-Dataset -o output -a False -t cpu -b FedAvg
+
+# python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -n 2 -e 1 -c 2 -f 2 -p Data -o Output -a False -t cpu
+#best rounds? epochs? 10 10
+# python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -n 10 -e 10 -c 10 -f 10 -p Data -o Output -a True -t cpu
