@@ -99,34 +99,6 @@ def savecomp(output, strat, rambef, ramaf, cpubef, cpuaf, gpubeff, gpuaf):
 
 
 def run(args):
-    def client_fn_reg(cid) -> FlowerClientCL:
-        return FlowerClientCL(cid, net.to(DEVICE), trainloader=trainloaders, valloader=valloaders,
-                              testloader=testloader, epochs=int(args.epochs),
-                              y_labels=y_labels, cl_strategy=caller, agent_config=agent_config, nrounds=int(args.rounds),
-                              path=f"{output_reg}",
-                              DEVICE=DEVICE, num_clients=n_cl, strat_name=strat_cl, params=params)
-
-    def client_fn_NR(cid) -> FlowerClient_NR:
-        return FlowerClient_NR(cid, net.to(DEVICE), trainloader=trainloaders, valloader=valloaders,
-                               testloader=testloader, epochs=int(args.epochs),
-                               y_labels=y_labels, cl_strategy=caller, agent_config=agent_config, nrounds=int(args.rounds),
-                               path=f"{output_NR}",
-                               DEVICE=DEVICE, num_clients=n_cl, strat_name=strat_cl, params=params)
-
-    def client_fn_reg_root(cid) -> FlowerClientCL_Root:
-        return FlowerClientCL_Root(cid, net.to(DEVICE), trainloader=trainloaders, valloader=valloaders,
-                                   testloader=testloader, epochs=int(args.epochs),
-                                   y_labels=y_labels, cl_strategy=caller, agent_config=agent_config, nrounds=int(args.rounds),
-                                   path=f"{output_root_reg}",
-                                   DEVICE=DEVICE, num_clients=n_cl, strat_name=strat_cl, params=params)
-
-    def client_fn_NR_root(cid) -> FlowerClient_NR_Root:
-        return FlowerClient_NR_Root(cid, net.to(DEVICE), trainloader=trainloaders, valloader=valloaders,
-                                    testloader=testloader, epochs=int(args.epochs),
-                                    y_labels=y_labels, cl_strategy=caller, agent_config=agent_config, nrounds=int(args.rounds),
-                                    path=f"{output_root_NR}",
-                                    DEVICE=DEVICE, num_clients=n_cl, strat_name=strat_cl, params=params)
-
     def client_fn_LGR(cid) -> FlowerClient_LGR:
         return FlowerClient_LGR(cid, net=net.to(DEVICE), trainloader=trainloaders, valloader=valloaders,
                                 testloader=testloader, gr=gr.to(DEVICE), epochs=int(args.epochs),
@@ -194,215 +166,14 @@ def run(args):
             if not os.path.exists(path):
                 os.mkdir(path)
                 
-            if strat == 'FedAvg':
-                for strat_cl in strategies_cl:
-                    if strat_cl == 'LGR':
-                        continue
-                    print("Running FL Strategy: " + str(strat) + ": " + str(strat_cl))
-                    
-                    output = f"{args.output}/{n_cl}/{strat}/{strat_cl}"
-                    if not os.path.exists(output):
-                        os.mkdir(output)
-                        
-                    if strat_cl in ['EWC', 'EWCOnline', 'SI', 'MAS']:
-                        if args.reg_coef == 'all':
-                            reg_coefficients = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]
-                        else:
-                            reg_coefficients = [float(args.reg_coef)]
-                        
-                        for coeff in reg_coefficients:
-                            output_reg = f"{output}/{coeff}"
-                            if not os.path.exists(f"{output_reg}"):
-                                os.mkdir(f"{output_reg}")
-
-                            agent_config = {'lr': 0.001, 'momentum': 0.1, 'weight_decay': 0.01,
-                                            'schedule': [int(args.epochs)],
-                                            'model_type': 'mode', 'model_name': 'model', 'model_weights': '',
-                                            'out_dim': {'All': 8},
-                                            'optimizer': 'Adam', 'print_freq': 0, 'gpuid': [gpu_flag],
-                                            'reg_coef': coeff}
-
-                            if strat_cl == 'EWC':
-                                caller = EWC
-                            elif strat_cl == 'EWCOnline':
-                                caller = EWCOnline
-                            elif strat_cl == 'SI':
-                                caller = SI
-                            elif strat_cl == 'MAS':
-                                caller = MAS
-                            client_fn = client_fn_reg
-
-                            strategy = FedAvgWithAccuracyMetric(
-                                min_available_clients=int(n_cl),
-                                initial_parameters=fl.common.ndarrays_to_parameters(params),
-                                on_fit_config_fn=fit_config,
-                                on_evaluate_config_fn=evaluate_config,
-                                evaluate_fn=get_eval_fn_cl(net, testloader=valloaders, DEVICE=DEVICE, y_labels=y_labels)
-                            )
-                            
-                            rambef = ramu.compute("BEFORE EVALUATION")
-                            cpubef = cpuu.compute("BEFORE EVALUATION")
-                            if gpu_flag == 1:
-                                gpubeff = gpuu.compute("BEFORE EVALUATION")
-                            else:
-                                gpubeff = 0
-                            
-                            run_strategy(strategy=strategy, strategy_name=f"{strat_cl}", coeff=coeff,
-                                         client_fn=client_fn, clients=n_cl, rounds=int(args.rounds),
-                                         epochs=int(args.epochs), output=f"{output}", aug=args.aug,
-                                         ray_init_args=ray_init_args, client_res=client_res)
-                            
-                            ramaf = ramu.compute("AFTER EVALUATION")
-                            cpuaf = cpuu.compute("AFTER EVALUATION")
-                            if gpu_flag == 1:
-                                gpuaf = gpuu.compute("AFTER EVALUATION")
-                            else:
-                                gpuaf = 0
-                            savecomp(f"{output}", coeff, rambef, ramaf, cpubef, cpuaf, gpubeff, gpuaf)
-                    elif strat_cl == 'NR':
-                        if args.reg_coef == 'all':
-                            buffer_sizes = [1, 10, 100, 1000]
-                        else:
-                            buffer_sizes = [int(args.reg_coef)]
-                            if buffer_sizes[0] == 0:
-                                buffer_sizes = [1]
-                        for buffer_size in buffer_sizes:
-                            output_NR = f"{output}/{buffer_size}"
-                            if not os.path.exists(f"{output_NR}"):
-                                os.mkdir(f"{output_NR}")
-
-                            agent_config = {'lr': 0.001, 'momentum': 0.1, 'weight_decay': 0.01,
-                                            'schedule': [int(args.epochs)],
-                                            'model_type': 'mode', 'model_name': 'model', 'model_weights': '',
-                                            'out_dim': {'All': 8},
-                                            'optimizer': 'Adam', 'print_freq': 0, 'gpuid': [gpu_flag],
-                                            'memory_size': buffer_size, 'reg_coef': 0.01}
-                            caller = NR
-                            client_fn = client_fn_NR
-
-                            strategy = FedAvgWithAccuracyMetric(
-                                min_available_clients=int(n_cl),
-                                initial_parameters=fl.common.ndarrays_to_parameters(params),
-                                on_fit_config_fn=fit_config,
-                                on_evaluate_config_fn=evaluate_config,
-                                evaluate_fn=get_eval_fn_cl(net, testloader=valloaders, DEVICE=DEVICE, y_labels=y_labels)
-
-                            )
-                            rambef = ramu.compute("BEFORE EVALUATION")
-                            cpubef = cpuu.compute("BEFORE EVALUATION")
-                            if gpu_flag == 1:
-                                gpubeff = gpuu.compute("BEFORE EVALUATION")
-                            else:
-                                gpubeff = 0
-                            run_strategy(strategy, f"{strat_cl}", buffer_size, client_fn, n_cl, int(args.rounds),
-                                         int(args.epochs),
-                                         f"{output}", args.aug, ray_init_args, client_res)
-                            ramaf = ramu.compute("AFTER EVALUATION")
-                            cpuaf = cpuu.compute("AFTER EVALUATION")
-                            if gpu_flag == 1:
-                                gpuaf = gpuu.compute("AFTER EVALUATION")
-                            else:
-                                gpuaf = 0
-                            savecomp(f"{output}", buffer_size, rambef, ramaf, cpubef, cpuaf, gpubeff, gpuaf)
-                    df2 = extract_metrics_gpu_csv(f"{output}/comp.csv")
-                    df2.to_csv(f"{output}/comp_extracted.csv")
-            elif strat == 'FedRoot':
+            if strat == 'FedRoot':
                 params = get_parameters(net.conv_module)
                 
                 for strat_cl in strategies_cl:
                     output = f"{args.output}/{n_cl}/{strat}/{strat_cl}"
                     if not os.path.exists(output):
                         os.mkdir(output)
-                    if strat_cl in ['EWC', 'EWCOnline', 'SI', 'MAS']:
-                        if args.reg_coef == 'all':
-                            reg_coefficients = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 100000]
-                        else:
-                            reg_coefficients = [float(args.reg_coef)]
-                        for coeff in reg_coefficients:
-                            
-                            output_root_reg = f"{output}/{coeff}"
-                            if not os.path.exists(output_root_reg):
-                                os.mkdir(f"{output_root_reg}")
-                            agent_config = {'lr': 0.0001, 'momentum': 0.1, 'weight_decay': 0.01,
-                                            'schedule': [int(args.epochs)],
-                                            'model_type': 'mode', 'model_name': 'model', 'model_weights': '',
-                                            'out_dim': {'All': 8}, 'optimizer':
-                                                'Adam', 'print_freq': 0, 'gpuid': [gpu_flag], 'reg_coef': coeff}
-                            if strat_cl == 'EWC':
-                                caller = EWC
-                            elif strat_cl == 'EWCOnline':
-                                caller = EWCOnline
-                            elif strat_cl == 'SI':
-                                caller = SI
-                            elif strat_cl == 'MAS':
-                                caller = MAS
-                            client_fn = client_fn_reg_root
-                            strategy = FedAvgWithAccuracyMetric(
-                                min_available_clients=int(n_cl),
-                                initial_parameters=fl.common.ndarrays_to_parameters(params),
-                                on_fit_config_fn=fit_config,
-                                on_evaluate_config_fn=evaluate_config
-                            )
-                            rambef = ramu.compute("BEFORE EVALUATION")
-                            cpubef = cpuu.compute("BEFORE EVALUATION")
-                            if gpu_flag == 1:
-                                gpubeff = gpuu.compute("BEFORE EVALUATION")
-                            else:
-                                gpubeff = 0
-                            run_strategy(strategy=strategy, strategy_name=f"{strat_cl}", coeff=coeff,
-                                         client_fn=client_fn, clients=n_cl, rounds=int(args.rounds),
-                                         epochs=int(args.epochs), output=f"{output}", aug=args.aug,
-                                         ray_init_args=ray_init_args, client_res=client_res)
-                            ramaf = ramu.compute("AFTER EVALUATION")
-                            cpuaf = cpuu.compute("AFTER EVALUATION")
-                            if gpu_flag == 1:
-                                gpuaf = gpuu.compute("AFTER EVALUATION")
-                            else:
-                                gpuaf = 0
-                            savecomp(f"{output}", coeff, rambef, ramaf, cpubef, cpuaf, gpubeff, gpuaf)
-                    elif strat_cl == 'NR':
-                        if args.reg_coef == 'all':
-                            buffer_sizes = [1, 10, 100, 1000]
-                        else:
-                            buffer_sizes = [int(args.reg_coef)]
-                        for buffer_size in buffer_sizes:
-                            output_root_NR = f"{output}/{buffer_size}"
-                            if not os.path.exists(output_root_NR):
-                                os.mkdir(f"{output_root_NR}")
-                            agent_config = {'lr': 0.0001, 'momentum': 0.1, 'weight_decay': 0.01,
-                                            'schedule': [int(args.epochs)],
-                                            'model_type': 'mode', 'model_name': 'model', 'model_weights': '',
-                                            'out_dim': {'All': 8},
-                                            'optimizer': 'Adam', 'print_freq': 0, 'gpuid': [gpu_flag],
-                                            'memory_size': buffer_size, 'reg_coef': 0.01}
-                            caller = NR
-
-                            client_fn = client_fn_NR_root
-
-                            strategy = FedAvgWithAccuracyMetric(
-                                min_available_clients=int(n_cl),
-                                initial_parameters=fl.common.ndarrays_to_parameters(params),
-                                on_fit_config_fn=fit_config,
-                                on_evaluate_config_fn=evaluate_config
-
-                            )
-                            rambef = ramu.compute("BEFORE EVALUATION")
-                            cpubef = cpuu.compute("BEFORE EVALUATION")
-                            if gpu_flag == 1:
-                                gpubeff = gpuu.compute("BEFORE EVALUATION")
-                            else:
-                                gpubeff = 0
-                            run_strategy(strategy, f"{strat_cl}", buffer_size, client_fn, n_cl, int(args.rounds),
-                                         int(args.epochs),
-                                         f"{output}", args.aug, ray_init_args, client_res)
-                            ramaf = ramu.compute("AFTER EVALUATION")
-                            cpuaf = cpuu.compute("AFTER EVALUATION")
-                            if gpu_flag == 1:
-                                gpuaf = gpuu.compute("AFTER EVALUATION")
-                            else:
-                                gpuaf = 0
-                            savecomp(f"{output}", buffer_size, rambef, ramaf, cpubef, cpuaf, gpubeff, gpuaf)
-                    elif strat_cl == 'LGR':
+                    if strat_cl == 'LGR':
                         agent_config = {'lr': 0.001, 'momentum': 0.1, 'weight_decay': 0.01,
                                         'schedule': [int(args.epochs)],
                                         'model_type': 'mode', 'model_name': 'model', 'model_weights': '',
@@ -483,7 +254,7 @@ if __name__ == "__main__":
     parser.add_argument("-x", "--batch_size", default=16, type=int, help="Batch Size?")
     parser.add_argument("-c", "--icl", type=int, default=2, help="Initial number of clients")
     parser.add_argument("-f", "--fcl", type=int, default=10, help="Final number of clients")
-    parser.add_argument("-p", "--path", type=str, help="Path to dataset")
+    parser.add_argument("-p", "--path", type=str, default='../datasets/MANNERSDB', help="Path to dataset")
     parser.add_argument("-o", "--output", type=str, help="Output path")
     parser.add_argument("-a", "--aug", type=eval, choices=[True, False], default='False', help="Use Augmentation?")
     parser.add_argument("-b", "--base", type=str, default="FedAvg", help="Default base for FedRoot Only")
