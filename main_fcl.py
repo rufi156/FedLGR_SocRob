@@ -1,8 +1,6 @@
 import argparse
 
-from CL.default import EWC
-from client.default import FlowerClientCL, FlowerClient_NR
-from client.fedRoot import FlowerClientCL_Root, FlowerClient_NR_Root, FlowerClient_LGR
+from client.fedRoot import FlowerClient_LGR
 from models.GenNet import VAE
 from dataloader.utils import task_splitter_circle_arrow
 from server.strategies import FedAvgWithAccuracyMetric
@@ -14,8 +12,7 @@ import matplotlib.pyplot as plt
 from utils import get_parameters
 import pandas as pd
 import os
-from CL.default import EWCOnline, SI, MAS, LatentGenerativeReplay
-from CL.default import Naive_Rehearsal as NR
+from CL.default import LatentGenerativeReplay
 from datetime import datetime
 from metrics.computation import RAMU, CPUUsage, GPUUsage
 from utils import plot_results, get_eval_fn_cl, extract_metrics_gpu_csv, truncate_float
@@ -117,7 +114,7 @@ def run(args):
         os.makedirs(experiment_path)
     # update the output path
     args.output = experiment_path
-    num_CPUs = 4
+    num_CPUs = os.cpu_count()
     if args.processor_type == 'gpu':
         num_GPUs = 1
         ray_init_args = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}
@@ -144,7 +141,7 @@ def run(args):
         if gpu_flag == 1:
             client_res = {"num_gpus": num_GPUs / n_cl, "num_cpus": num_CPUs}
         else:
-            client_res = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}
+            client_res = {"num_gpus": num_GPUs, "num_cpus": num_CPUs / n_cl}
 
         if not os.path.exists(f"{args.output}/{n_cl}"):
             os.mkdir(f"{args.output}/{n_cl}")
