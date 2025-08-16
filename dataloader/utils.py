@@ -169,8 +169,10 @@ def task_splitter(path, n_clients, aug, batch_size=16):
 		transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 	])
 
-	train = pd.read_csv(path + "pepper_data_train.csv")
-	test = pd.read_csv(path + "pepper_data_test_equal.csv")
+	train = pd.read_csv(path + "/pepper_data_train.csv")
+	test = pd.read_csv(path + "/pepper_data_test_equal.csv")
+	train["path"] = train["path"].str.replace("../data/", "data/", regex=False)
+	test["path"] = test["path"].str.replace("../data/", "data/", regex=False)
 	
 	y_labels = train.columns[-9:]
 	tasks = train['domain'].unique()
