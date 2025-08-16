@@ -26,6 +26,7 @@ warnings.filterwarnings("ignore")
 def run_strategy(strategy, strategy_name, coeff, client_fn, clients, rounds, epochs, output, aug, ray_init_args,
                  client_res):
     print("Running strategy " + str(strategy_name) + " for " + str(clients) + "clients!")
+    print(f"{ray_init_args=}\n{client_res=}")
     
     history = fl.simulation.start_simulation(
         client_fn=client_fn,
