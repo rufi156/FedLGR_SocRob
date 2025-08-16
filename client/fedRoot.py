@@ -83,21 +83,53 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 			self.gr.load_state_dict(state_dict, strict=True)
 		except:
 			reg_term=self.gr.state_dict()
-		if config["server_round"] < int(self.nrounds / 2):
-			# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False))
-			peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False)
-			reg_term = self.strat.get_generator_weights()
-		elif config["server_round"] == int(self.nrounds / 2):
+
+		# if config["server_round"] < int(self.nrounds / 2):
+		# 	# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False))
+		# 	peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False)
+		# 	reg_term = self.strat.get_generator_weights()
+		# elif config["server_round"] == int(self.nrounds / 2):
 			
-			# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=True))
-			peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=True)
-			reg_term = self.strat.get_generator_weights()
-			task_count += 1
+		# 	# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=True))
+		# 	peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=True)
+		# 	reg_term = self.strat.get_generator_weights()
+		# 	task_count += 1
 			
+		# else:
+		# 	# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[1][int(self.cid)], learn_gen=False))
+		# 	peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[1][int(self.cid)], learn_gen=False)
+		# 	reg_term = self.strat.get_generator_weights()
+		
+		num_tasks = 6
+		rounds_per_task = int(self.nrounds / num_tasks)  # 30 rounds / 6 tasks = 5 rounds/task
+		# Current task index (0-indexed)
+		current_task = (config["server_round"] - 1) // rounds_per_task
+		# Round number *within* the current task (0 to rounds_per_task-1)
+		round_within_task = (config["server_round"] - 1) % rounds_per_task
+
+		if current_task == 0:
+			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False)
+			reg_term = self.strat.get_generator_weights()
+			# last task round - train gen and increment task
+			if round_within_task == (rounds_per_task - 1):
+				peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=True)
+				reg_term = self.strat.get_generator_weights()
+				task_count += 1
+		elif 1 <= current_task <= 4:
+			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[current_task][int(self.cid)], learn_gen=True)
+			reg_term = self.strat.get_generator_weights()
+			# last round - increment task
+			if round_within_task == (rounds_per_task - 1):
+				task_count += 1
+		elif current_task == 5:
+			# last task no gen train
+			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[5][int(self.cid)], learn_gen=False)
+			if round_within_task == (rounds_per_task - 1):
+				task_count += 1
 		else:
-			# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[1][int(self.cid)], learn_gen=False))
-			peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[1][int(self.cid)], learn_gen=False)
-			reg_term = self.strat.get_generator_weights()
+			# Out of expected rounds
+			peak_ram = 0
+
 		with open(f'{self.path}/gen{int(self.cid)}.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
 				pickle.dump(reg_term, f)
 		with open(f'{self.path}/task{int(self.cid)}.txt', 'w+') as f:  # Python 3: open(..., 'wb')
@@ -110,9 +142,11 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 			f.write(f'{config["server_round"]},{init_ram},{peak_ram},{peak_ram-init_ram}\n')
 		with open(f'{self.path}/mod{self.cid}.pkl', 'wb') as f:
 			pickle.dump(state_dict, f)
-		if config['server_round'] <= int(self.nrounds / 2):
-			return self.get_parameters(config={}), len(self.trainloaders[0][int(self.cid)]), {}
-		return self.get_parameters(config={}), len(self.trainloaders[1][int(self.cid)]), {}
+
+		# if config['server_round'] <= int(self.nrounds / 2):
+		# 	return self.get_parameters(config={}), len(self.trainloaders[0][int(self.cid)]), {}
+		# return self.get_parameters(config={}), len(self.trainloaders[1][int(self.cid)]), {}
+		return self.get_parameters(config={}), len(self.trainloaders[current_task][int(self.cid)]), {}
 	
 	def evaluate(self, parameters, config):
 		if not os.path.exists(f'{self.path}/clientwise'):
@@ -127,16 +161,23 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 			self.set_parameters_fc(state_dict)
 		except:
 			print('')
-		if config["server_round"] <= int(self.nrounds / 2):
-			# loss, avg_pearson, avg_rmse = test(self.net, self.valloader[0], self.y_labels, self.DEVICE)
-			loss, avg_pearson, avg_rmse = test(self.strat.model, self.valloader[0], self.y_labels, self.DEVICE)
-		else:
-			# loss, avg_pearson, avg_rmse = test(self.net, self.testloader, self.y_labels, self.DEVICE)
-			loss, avg_pearson, avg_rmse = test(self.strat.model, self.testloader, self.y_labels, self.DEVICE)
+		# if config["server_round"] <= int(self.nrounds / 2):
+		# 	# loss, avg_pearson, avg_rmse = test(self.net, self.valloader[0], self.y_labels, self.DEVICE)
+		# 	loss, avg_pearson, avg_rmse = test(self.strat.model, self.valloader[0], self.y_labels, self.DEVICE)
+		# else:
+		# 	# loss, avg_pearson, avg_rmse = test(self.net, self.testloader, self.y_labels, self.DEVICE)
+		# 	loss, avg_pearson, avg_rmse = test(self.strat.model, self.testloader, self.y_labels, self.DEVICE)
+
+		num_tasks = 6
+		rounds_per_task = int(self.nrounds / num_tasks)
+		current_task = (config["server_round"] - 1) // rounds_per_task
+		loss, avg_pearson, avg_rmse = test(self.strat.model, self.valloader[current_task], self.y_labels, self.DEVICE)
+
 		# append the results to a file
 		with open(f'{self.path}/clientwise/results{int(self.cid)}.txt', 'a+') as f:  # Python 3: open(..., 'wb')
 			f.write(f'{config["server_round"]},{loss},{avg_pearson},{avg_rmse}\n')
-		if config['server_round'] <= int(self.nrounds / 2):
-			return float(loss), len(self.valloader[0]), {"avg_pearson_score": avg_pearson, "avg_rmse": avg_rmse}
-		return float(loss), len(self.testloader), {"avg_pearson_score": avg_pearson, "avg_rmse": avg_rmse}
+		# if config['server_round'] <= int(self.nrounds / 2):
+		# 	return float(loss), len(self.valloader[0]), {"avg_pearson_score": avg_pearson, "avg_rmse": avg_rmse}
+		# return float(loss), len(self.testloader), {"avg_pearson_score": avg_pearson, "avg_rmse": avg_rmse}
+		return float(loss), len(self.valloader[current_task]), {"avg_pearson_score": avg_pearson, "avg_rmse": avg_rmse}
 
