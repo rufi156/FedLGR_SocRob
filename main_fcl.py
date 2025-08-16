@@ -185,24 +185,24 @@ def run(args):
                             os.mkdir(f"{output_root_LGR}")
                         if args.model == 'MobileNet':
                             input_dim = 1280  # Replace with the size of your input data
-                            if gpu_flag == 1:
-                                with open('models/gpu/MobileNet.pkl', 'rb') as f:
-                                    net.load_state_dict(pickle.load(f), strict=True)
-                                print("-------------------Loaded pretrained MobileNet for GPU-------------------")
-                            else:
-                                with open('models/cpu/MobileNet.pkl', 'rb') as f:
-                                    net.load_state_dict(pickle.load(f), strict=True)
-                                print("-------------------Loaded pretrained MobileNet for CPU-------------------")
-                        elif args.model == 'DeepLabMobileNet':
-                            input_dim = 1344
-                            if gpu_flag == 1:
-                                with open('models/gpu/DeepLabMobileNet.pkl', 'rb') as f:
-                                    net.load_state_dict(pickle.load(f), strict=True)
-                                print("-------------------Loaded pretrained DeepLabMobileNet for GPU-------------------")
-                            else:
-                                with open('models/cpu/DeepLabMobileNet.pkl', 'rb') as f:
-                                    net.load_state_dict(pickle.load(f), strict=True)
-                                print("-------------------Loaded pretrained DeepLabMobileNet for CPU-------------------")
+                        #     if gpu_flag == 1:
+                        #         with open('models/gpu/MobileNet.pkl', 'rb') as f:
+                        #             net.load_state_dict(pickle.load(f), strict=True)
+                        #         print("-------------------Loaded pretrained MobileNet for GPU-------------------")
+                        #     else:
+                        #         with open('models/cpu/MobileNet.pkl', 'rb') as f:
+                        #             net.load_state_dict(pickle.load(f), strict=True)
+                        #         print("-------------------Loaded pretrained MobileNet for CPU-------------------")
+                        # elif args.model == 'DeepLabMobileNet':
+                        #     input_dim = 1344
+                        #     if gpu_flag == 1:
+                        #         with open('models/gpu/DeepLabMobileNet.pkl', 'rb') as f:
+                        #             net.load_state_dict(pickle.load(f), strict=True)
+                        #         print("-------------------Loaded pretrained DeepLabMobileNet for GPU-------------------")
+                        #     else:
+                        #         with open('models/cpu/DeepLabMobileNet.pkl', 'rb') as f:
+                        #             net.load_state_dict(pickle.load(f), strict=True)
+                        #         print("-------------------Loaded pretrained DeepLabMobileNet for CPU-------------------")
                         # params = get_parameters(net.conv_module)
                         latent_dim = 64  # Set according to your desired latent space dimension
                         encoder_units = [256, 128]  # Adjust as needed
@@ -279,5 +279,6 @@ if __name__ == "__main__":
 # python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -r 1000 -n 2 -e 1 -c 2 -f 2 -p SADRA-Dataset -o output -a False -t cpu -b FedAvg
 
 # python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -n 2 -e 1 -c 2 -f 2 -p Data -o Output -a False -t cpu
-#best rounds? epochs? 10 10
 # python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -n 10 -e 10 -c 10 -f 10 -p Data -o Output -a True -t cpu
+# after extension to 6 tasks
+# python main_fcl.py -sfl FedRoot -scl LGR -m MobileNet -n 12 -e 1 -c 2 -f 2 -p data -o Output -a True -t cpu
