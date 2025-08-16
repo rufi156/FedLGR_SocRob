@@ -18,7 +18,7 @@ class CustomDataset(Dataset):
         image = Image.open(img_path).convert('RGB')
         image = image.crop((295, 0, 295+1018, image.size[1]))
     
-        labels = torch.tensor(self.dataframe.iloc[idx, 4:].values.astype('float32'), dtype=torch.float32)
+        labels = torch.tensor(self.dataframe.iloc[idx, -9:].values.astype('float32'), dtype=torch.float32)
 
         if self.transform:
             image = self.transform(image)

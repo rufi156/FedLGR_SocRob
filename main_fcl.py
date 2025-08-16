@@ -2,7 +2,7 @@ import argparse
 
 from client.fedRoot import FlowerClient_LGR
 from models.GenNet import VAE
-from dataloader.utils import task_splitter_circle_arrow
+from dataloader.utils import task_splitter_circle_arrow, task_splitter
 from server.strategies import FedAvgWithAccuracyMetric
 import ray
 import flwr as fl
@@ -147,7 +147,7 @@ def run(args):
         if not os.path.exists(f"{args.output}/{n_cl}"):
             os.mkdir(f"{args.output}/{n_cl}")
 
-        trainloaders, valloaders, testloader, y_labels = task_splitter_circle_arrow(path=args.path, n_clients=n_cl, aug=args.aug, batch_size=args.batch_size)
+        trainloaders, valloaders, testloader, y_labels = task_splitter(path=args.path, n_clients=n_cl, aug=args.aug, batch_size=args.batch_size)
         
 
         if args.strategy_fl == 'all':
@@ -175,7 +175,7 @@ def run(args):
                         agent_config = {'lr': 0.001, 'momentum': 0.1, 'weight_decay': 0.01,
                                         'schedule': [int(args.epochs)],
                                         'model_type': 'mode', 'model_name': 'model', 'model_weights': '',
-                                        'out_dim': {'All': 8},
+                                        'out_dim': {'All': 9},
                                         'optimizer': 'Adam', 'print_freq': 0, 'gpuid': [gpu_flag], 'reg_coef': 0.01}
 
                         caller = LatentGenerativeReplay
