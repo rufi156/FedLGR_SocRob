@@ -679,7 +679,7 @@ class LatentGenerativeReplay(nn.Module):
 					batch_time.update(batch_timer.toc())
 					data_timer.toc()
 				print(f"Epoch {epoch + 1}/{self.config['schedule'][-1]}, Loss: {losses.avg}")
-				print_memory_usage(f"task={task_count} EtE finish epoch {epoch}}")
+				print_memory_usage(f"task={task_count} EtE finish epoch {epoch}")
 		
 		if learn_gen == True:
 			print_memory_usage(f"task={task_count} before train gen")
