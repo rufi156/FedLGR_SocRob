@@ -25,7 +25,7 @@ import psutil, os
 def print_memory_usage(stage=""):
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / (1024**3)
-    print(f"[{stage}] Memory used: {mem:.2f} GB")
+    # print(f"[{stage}] Memory used: {mem:.2f} GB")
 
 
 class RMSELoss(torch.nn.Module):
