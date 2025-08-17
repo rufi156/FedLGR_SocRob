@@ -110,27 +110,27 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 		round_within_task = (config["server_round"] - 1) % rounds_per_task
 
 		if current_task == 0:
-			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False)
-			reg_term = self.strat.get_generator_weights()
-			# last task round - train gen and increment task
-			if round_within_task == (rounds_per_task - 1):
+			if round_within_task < (rounds_per_task - 1):
+				peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=False)
+				reg_term = self.strat.get_generator_weights()
+			else:
+				# last task round - train gen and increment task
 				peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[0][int(self.cid)], learn_gen=True)
 				reg_term = self.strat.get_generator_weights()
 				task_count += 1
-		elif 1 <= current_task <= 4:
-			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[current_task][int(self.cid)], learn_gen=True)
-			reg_term = self.strat.get_generator_weights()
-			# last round - increment task
-			if round_within_task == (rounds_per_task - 1):
+		elif 0 < current_task < num_tasks-1:
+			if round_within_task < (rounds_per_task - 1):
+				peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[current_task][int(self.cid)], learn_gen=False)
+				reg_term = self.strat.get_generator_weights()
+			else:
+				#last task round - train gen and increment task
+				peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[current_task][int(self.cid)], learn_gen=True)
+				reg_term = self.strat.get_generator_weights()
 				task_count += 1
-		elif current_task == 5:
+		elif current_task == num_tasks-1:
 			# last task no gen train
-			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[5][int(self.cid)], learn_gen=False)
-			if round_within_task == (rounds_per_task - 1):
-				task_count += 1
-		else:
-			# Out of expected rounds
-			peak_ram = 0
+			peak_ram = self.strat.learn_batch(task_count, reg_term, self.trainloaders[num_tasks-1][int(self.cid)], learn_gen=False)
+
 		print_memory_usage("after tasks iterations")
 		with open(f'{self.path}/gen{int(self.cid)}.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
 				pickle.dump(reg_term, f)
