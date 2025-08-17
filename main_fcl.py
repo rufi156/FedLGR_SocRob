@@ -19,6 +19,7 @@ from utils import plot_results, get_eval_fn_cl, extract_metrics_gpu_csv, truncat
 import gc
 import pickle
 import warnings
+from utils import print_memory_usage
 
 warnings.filterwarnings("ignore")
 
@@ -27,7 +28,7 @@ def run_strategy(strategy, strategy_name, coeff, client_fn, clients, rounds, epo
                  client_res):
     print("Running strategy " + str(strategy_name) + " for " + str(clients) + "clients!")
     print(f"{ray_init_args=}\n{client_res=}")
-    
+    print_memory_usage("before run_strategy")
     history = fl.simulation.start_simulation(
         client_fn=client_fn,
         num_clients=int(clients),
@@ -97,6 +98,7 @@ def savecomp(output, strat, rambef, ramaf, cpubef, cpuaf, gpubeff, gpuaf):
 
 
 def run(args):
+    print_memory_usage("the begining")
     def client_fn_LGR(cid) -> FlowerClient_LGR:
         return FlowerClient_LGR(cid, net=net.to(DEVICE), trainloader=trainloaders, valloader=valloaders,
                                 testloader=testloader, gr=gr.to(DEVICE), epochs=int(args.epochs),
@@ -142,13 +144,13 @@ def run(args):
         if gpu_flag == 1:
             client_res = {"num_gpus": num_GPUs / n_cl, "num_cpus": num_CPUs}
         else:
-            client_res = {"num_gpus": num_GPUs, "num_cpus": num_CPUs / n_cl}
+            client_res = {"num_gpus": num_GPUs, "num_cpus": num_CPUs}# / n_cl}
 
         if not os.path.exists(f"{args.output}/{n_cl}"):
             os.mkdir(f"{args.output}/{n_cl}")
 
         trainloaders, valloaders, testloader, y_labels = task_splitter(path=args.path, n_clients=n_cl, aug=args.aug, batch_size=args.batch_size)
-        
+        print_memory_usage("after loading dataloaders")
 
         if args.strategy_fl == 'all':
             strategies = ['FedAvg', 'FedRoot']

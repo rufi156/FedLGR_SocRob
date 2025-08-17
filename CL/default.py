@@ -13,6 +13,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 import warnings
 from collections import OrderedDict
 import numpy as np
+from utils import print_memory_usage
 
 warnings.filterwarnings("ignore")
 
@@ -541,13 +542,14 @@ class LatentGenerativeReplay(nn.Module):
 		peak_ram = 0
 		ramu = RAMU()
 		peak_ram = max(peak_ram, ramu.compute("TRAINING"))
+		print_memory_usage("at start of learn_batch")
 		if self.task_count == 0:
-			print(" ............................................................................ Learning LGR Task 1")
+			print(" ............................................................................ Learning LGR Task 0")
 			# Config the model and optimizer
 			self.model.train()
 			params = [{'params': self.model.conv_module.parameters(), 'lr': 0.00001}, {'params': self.model.fc_module.parameters(), 'lr': 0.001}]
-			
 			for epoch in range(self.config['schedule'][-1]):
+				print_memory_usage(f"task=0 epoch iteration - epoch{epoch}")
 				self.log('Epoch:{0}'.format(epoch))
 				data_timer = Timer()
 				batch_timer = Timer()
@@ -557,21 +559,26 @@ class LatentGenerativeReplay(nn.Module):
 				acc = AverageMeter()
 				self.scheduler.step(epoch)
 				optimizer = torch.optim.Adam(params)
-				
+				#print_memory_usage("task=0 epoch iteration after setup")
 				# Learning with mini-batch
 				data_timer.tic()
 				batch_timer.tic()
 				self.log('Itr\t\tTime\t\t  Data\t\t  Loss\t\tAcc')
 				for i, (inputs, targets) in enumerate(train_loader):
+					print_memory_usage(f"task=0 epoch iteration - iterate batches - batch {i}")
 					data_time.update(data_timer.toc())
 					if self.gpu:
 						inputs = inputs.cuda()
 						targets = targets.cuda()
+					#print_memory_usage("task=0 epoch iteration - before forward")
 					out = self.forward(inputs)
+					#print_memory_usage("task=0 epoch iteration - after forward")
 					loss = self.criterion(out, targets)
+					#print_memory_usage("task=0 epoch iteration - after loss")
 					optimizer.zero_grad()
 					loss.backward()
 					optimizer.step()
+					#print_memory_usage("task=0 epoch iteration - after step")
 					peak_ram = max(peak_ram, ramu.compute("TRAINING"))
 					
 					inputs = inputs.detach()
@@ -580,16 +587,19 @@ class LatentGenerativeReplay(nn.Module):
 					losses.update(loss, inputs.size(0))
 					batch_time.update(batch_timer.toc())
 					data_timer.toc()
+					#print_memory_usage("task=0 epoch iteration - finish batch")
 				print(f"Epoch {epoch + 1}/{self.config['schedule'][-1]}, Loss: {losses.avg}")
-		
+				print_memory_usage(f"after epoch {epoch}")
 		else:
-			print(" ............................................................................ Learning LGR Task 2")
+			print(f" ............................................................................ Learning LGR Task {task_count}")
 			
 			# train(self.model.fc_module, train_loader, self.Device, self.config['schedule'][-1])
+			print_memory_usage(f"task={task_count} before mix gen data")
 			mixed_task_data = self.latent_creator(train_loader)
 			self.model.train()
 			
 			for epoch in range(self.config['schedule'][-1]):
+				print_memory_usage(f"task={task_count} epoch iteration - epoch{epoch}")
 				data_timer = Timer()
 				batch_timer = Timer()
 				batch_time = AverageMeter()
@@ -606,6 +616,7 @@ class LatentGenerativeReplay(nn.Module):
 				batch_timer.tic()
 				self.log('Itr\t\tTime\t\t  Data\t\t  Loss\t\tAcc')
 				for i, (inputs, targets) in enumerate(mixed_task_data):
+					print_memory_usage(f"task={task_count} batch iteration - batch{i}")
 					data_time.update(data_timer.toc())
 					if self.gpu:
 						inputs = inputs.cuda()
@@ -625,9 +636,11 @@ class LatentGenerativeReplay(nn.Module):
 					batch_time.update(batch_timer.toc())
 					data_timer.toc()
 				print(f"Epoch {epoch + 1}/{self.config['schedule'][-1]}, Loss: {losses.avg}")
+				print_memory_usage(f"task={task_count} finish epoch {epoch}")
 			# freeze all layers of self.model.fc_module
 			print(" ............................................................................ Learning LGR End to End Top Frozen")
 			for epoch in range(self.config['schedule'][-1]):
+				print_memory_usage(f"task={task_count} EtE epoch iteration - epoch {epoch}")
 				data_timer = Timer()
 				batch_timer = Timer()
 				batch_time = AverageMeter()
@@ -648,6 +661,7 @@ class LatentGenerativeReplay(nn.Module):
 				batch_timer.tic()
 				self.log('Itr\t\tTime\t\t  Data\t\t  Loss\t\tAcc')
 				for i, (inputs, targets) in enumerate(train_loader):
+					print_memory_usage(f"task={task_count} EtE batch iteration - batch {i}")
 					data_time.update(data_timer.toc())
 					if self.gpu:
 						inputs = inputs.cuda()
@@ -665,7 +679,10 @@ class LatentGenerativeReplay(nn.Module):
 					batch_time.update(batch_timer.toc())
 					data_timer.toc()
 				print(f"Epoch {epoch + 1}/{self.config['schedule'][-1]}, Loss: {losses.avg}")
+				print_memory_usage(f"task={task_count} EtE finish epoch {epoch}}")
 		
 		if learn_gen == True:
+			print_memory_usage(f"task={task_count} before train gen")
 			self.train_generator(train_loader, self.task_count)
+			print_memory_usage(f"task={task_count} after train gen")
 		return peak_ram

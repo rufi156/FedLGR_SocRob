@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from collections import OrderedDict
 import torch
 import numpy as np
+from utils import print_memory_usage
 
 
 class FlowerClient_LGR(fl.client.NumPyClient):
@@ -58,6 +59,7 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 	def fit(self, parameters, config):
 		print(f"[Client {self.cid}] fit, config: {config}")
 		init_ram=RAMU().compute("TRAINING")
+		print_memory_usage("at start of fit()")
 
 		# set_parameters(self.net.conv_module, parameters)
 		self.set_parameters(parameters)
@@ -99,7 +101,7 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 		# 	# self.net = copy.deepcopy(self.strat.learn_batch(task_count, reg_term, self.trainloaders[1][int(self.cid)], learn_gen=False))
 		# 	peak_ram=self.strat.learn_batch(task_count, reg_term, self.trainloaders[1][int(self.cid)], learn_gen=False)
 		# 	reg_term = self.strat.get_generator_weights()
-		
+		print_memory_usage("at start of tasks iterations")
 		num_tasks = 6
 		rounds_per_task = int(self.nrounds / num_tasks)  # 30 rounds / 6 tasks = 5 rounds/task
 		# Current task index (0-indexed)
@@ -129,7 +131,7 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 		else:
 			# Out of expected rounds
 			peak_ram = 0
-
+		print_memory_usage("after tasks iterations")
 		with open(f'{self.path}/gen{int(self.cid)}.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
 				pickle.dump(reg_term, f)
 		with open(f'{self.path}/task{int(self.cid)}.txt', 'w+') as f:  # Python 3: open(..., 'wb')
@@ -149,6 +151,7 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 		return self.get_parameters(config={}), len(self.trainloaders[current_task][int(self.cid)]), {}
 	
 	def evaluate(self, parameters, config):
+		print_memory_usage("at start of eval")
 		if not os.path.exists(f'{self.path}/clientwise'):
 			os.makedirs(f'{self.path}/clientwise')
 		print(f"[Client {self.cid}] evaluate, config: {config}")
@@ -172,7 +175,7 @@ class FlowerClient_LGR(fl.client.NumPyClient):
 		rounds_per_task = int(self.nrounds / num_tasks)
 		current_task = (config["server_round"] - 1) // rounds_per_task
 		loss, avg_pearson, avg_rmse = test(self.strat.model, self.valloader[current_task], self.y_labels, self.DEVICE)
-
+		print_memory_usage("after eval test")
 		# append the results to a file
 		with open(f'{self.path}/clientwise/results{int(self.cid)}.txt', 'a+') as f:  # Python 3: open(..., 'wb')
 			f.write(f'{config["server_round"]},{loss},{avg_pearson},{avg_rmse}\n')
