@@ -432,7 +432,7 @@ class LatentGenerativeReplay(nn.Module):
 			for i in range(num_samples):
 				inputs = torch.randn(1, 64).to(DEVICE)
 				outputs = net.decode(inputs)
-				labels = self.model.fc_module(outputs)
+				# labels = self.model.fc_module(outputs)
 				for i in range(len(outputs)):
 					new_pairs.append((outputs[i], outputs[i]))
 		# batch_size = 16
@@ -444,7 +444,7 @@ class LatentGenerativeReplay(nn.Module):
 		try:
 			current_task_reconstucted_data = torch.load(f'{self.path}/{self.client_id}_current_task_reconstucted_data.pth')
 		except:
-			current_task_reconstucted_data = self.predict_from_gen(self.generator, num_samples=len(new_data) * 16, DEVICE=self.Device, batch_size=16)
+			current_task_reconstucted_data = self.predict_from_gen(self.generator, num_samples=len(new_data) * 16, DEVICE=self.Device, batch_size=16) #noisne>features + >fc_ >scores
 			torch.save(current_task_reconstucted_data, f'{self.path}/{self.client_id}_current_task_reconstucted_data.pth')
 		# shuffle it with train_loader and return
 		# both are dataloaders
@@ -471,11 +471,11 @@ class LatentGenerativeReplay(nn.Module):
 			current_task_reconstucted_data = torch.load(f'{self.path}/{self.client_id}_current_task_reconstucted_data_generator.pth')
 		except:
 			current_task_reconstucted_data = self.predict_from_gen_gen(self.generator, num_samples=len(new_data) * 16, DEVICE=self.Device,
-			                                                           batch_size=16)
+			                                                           batch_size=16) #SHOULD BE pairs of gen features
 			torch.save(current_task_reconstucted_data, f'{self.path}/{self.client_id}_current_task_reconstucted_data_generator.pth')
 		# shuffle it with train_loader and return
 		# both are dataloaders
-		dataset1 = new_data.dataset
+		dataset1 = new_data.dataset #pairs of train features
 		dataset2 = current_task_reconstucted_data.dataset
 		# for input, label in new_data:
 		# 	print(input.shape)
@@ -508,9 +508,9 @@ class LatentGenerativeReplay(nn.Module):
 		self.generator.train()
 		self.generator.to(self.Device)
 		optimizer = torch.optim.Adam(self.generator.parameters(), lr=0.0001)
-		gen_train_data = predict_gen(self.model.conv_module, train_loader, self.Device, batch_size=16)
+		gen_train_data = predict_gen(self.model.conv_module, train_loader, self.Device, batch_size=16) #get duplicate pairs of image features (processed by mobilenet) of train_loader for generator training
 		if task_count != 0:
-			gen_train_data = self.create_dataset_gen(gen_train_data)
+			gen_train_data = self.create_dataset_gen(gen_train_data) # SHOULD BE? pairs of train features + pairs of gen features
 		tot = self.config['schedule'][-1]
 		for epoch in range(self.config['schedule'][-1] // 2):
 			for input, target in gen_train_data:
@@ -529,10 +529,10 @@ class LatentGenerativeReplay(nn.Module):
 	def latent_creator(self, train_loader):
 		self.model.eval()
 		self.model.to(self.Device)
-		current_task_latent_data = predict(self.model.conv_module, train_loader, self.Device, batch_size=16)
+		current_task_latent_data = predict(self.model.conv_module, train_loader, self.Device, batch_size=16) #features and score label
 		print(" ............................................................................ Learning LGR Data Mixed")
 		
-		final = self.create_dataset(current_task_latent_data)
+		final = self.create_dataset(current_task_latent_data) #features+scores + genfeatures+>scores
 		return final
 	
 	def learn_batch(self, task_count, genweights, train_loader, learn_gen, val_loaderr=None):
